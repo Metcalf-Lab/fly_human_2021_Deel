@@ -2,7 +2,7 @@
 
 16S rRNA analysis of fly and human samples from ~2016 that were collected at the Southeast Texas Applied Forensic Science Facility in Huntsville, TX. 
 
-Analysis was conducted using the QIIME2 software, R, and SourceTracker2. Raw data are available in this repository. 
+Analysis was conducted using the QIIME2 software, R, and SourceTracker2. Raw data are available in QIITA study 13301.
 
 Title: The microbiome of blow fly organs and fly-human microbial transfer during decomposition
 
