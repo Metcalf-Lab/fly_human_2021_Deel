@@ -1,0 +1,1960 @@
+#####################################################################################################
+# Author: Heather Deel
+# Processing workflow of SHSU fly and human (face, fecal, body) data
+# Continuing from Sophia Montoya's analysis (located at /Users/heatherdeel/Dropbox/SHSU body farm projects/Projects/fly/00_readme/READ_ME_Sophia.txt)
+######################################################################################################
+
+### Data wrangling
+
+# make a big mapping file of fly, face, and body metadata.
+# use only body and face data that comes from the same fly cadavers
+
+metadata file location: /Dropbox/SHSU_body_farm_projects/Projects/fly/02_metadata/merged_mapping_fly_flybodies_final.txt
+
+# datasets that include fly, body, and face data, and the raw files to use for each are:
+dataset 2 pool 1 - MergedBarcodes.fq.bz2, MergedRaw.fq.bz2
+dataset 3 pool 213 - LynnePool213.RawReadsBarcodes.fq.bz2, LynnePool213.Read1.fq.bz2, LynnePool213.Read2.fq.bz2
+dataset 3 pool 214 - LynnePool214.RawReadsBarcodes.fq.bz2, LynnePool214.Read1.fq.bz2, LynnePool214.Read2.fq.bz2
+dataset 3 pool 215 - LynnePool215.RawReadsBarcodes.fq.bz2, LynnePool215.Read1.fq.bz2, LynnePool215.Read2.fq.bz2
+dataset 3 pool 216 - LynnePool216.RawReadsBarcodes.fq.bz2, LynnePool216.Read1.fq.bz2, LynnePool216.Read2.fq.bz2
+dataset 4 pool 247 - LynnePool247.RawReadsBarcodes.fq.bz2, LynnePool247.Read1.fq.bz2, LynnePool247.Read2.fq.bz2
+
+# all files located here within the respective dataset folders:
+/Users/heatherdeel/Dropbox/SHSU_body_farm_projects/raw_data_files
+
+# note that dataset 2 pool 2 and dataset 2 pool 3 are not relevant to the fly dataset - include old bodies and other samples that I'm not sure what they are
+
+# Should not use the files created by Sophia in QIITA study 13301 - these data include only the fly data, and since human and face data are included in the same pools, it would be more consistent to re-demux everything at the same time instead of only demuxing some of the pools and then merging
+# will still include all raw files in QIITA study 13301
+
+# copy all raw files to desktop, label with dataset and pool number if not already, and decompress there
+
+# create an analysis folder in Summit:
+mkdir /scratch/summit/hdeel@colostate.edu/fly_analysis
+cd /scratch/summit/hdeel@colostate.edu/fly_analysis
+
+# add each of the raw files into this folder (can do all this in filezilla)
+
+# change fq to fastq in each file name (for QIIME2)
+
+# put each raw file into a designated folder (titled datasetX_poolX)
+
+# rename all forward reads to forward.fastq, all reverse reads to reverse.fastq, barcode reads to barcode.fastq, and the merged sequencing file to sequences.fastq
+
+# zip all fastq files using gzip
+
+# can treat the MergedRaw (sequences.fastq.gz in dataset 2 pool 1) as forward reads
+
+### import raw data into QIIME2
+
+source activate qiime2-2021.4
+
+# dataset 2 pool 1 
+
+qiime tools import \
+> --type EMPSingleEndSequences \
+> --input-path dataset2_pool1 \
+> --output-path dataset2_pool1_seqs.qza
+
+# dataset 3 pool 213
+
+qiime tools import \
+> --type EMPPairedEndSequences \
+> --input-path dataset3_pool213 \
+> --output-path dataset3_pool213_seqs.qza
+
+# dataset 3 pool 214
+
+qiime tools import \
+> --type EMPPairedEndSequences \
+> --input-path dataset3_pool214 \
+> --output-path dataset3_pool214_seqs.qza
+
+# dataset 3 pool 215
+
+qiime tools import \
+> --type EMPPairedEndSequences \
+> --input-path dataset3_pool215 \
+> --output-path dataset3_pool215_seqs.qza
+
+# dataset 3 pool 216
+
+qiime tools import \
+> --type EMPPairedEndSequences \
+> --input-path dataset3_pool216 \
+> --output-path dataset3_pool216_seqs.qza
+
+# dataset 4 pool 247
+
+qiime tools import \
+> --type EMPPairedEndSequences \
+> --input-path dataset4_pool247 \
+> --output-path dataset4_pool247_seqs.qza
+
+### demultiplex each pool 
+
+# put each individual mapping file (needed to be separated by pool due to dupliate barcodes) onto Summit
+
+# remember to do single-end demux for dataset 2 pool 1, and paired-end demux for the rest
+
+######################### script begin ##############################
+#!/bin/sh
+#SBATCH --job-name=demux_fly
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=USER@colostate.edu
+
+# activate qiime
+source activate qiime2-2021.4
+
+# demux dataset 2 pool 1
+qiime demux emp-single \
+--i-seqs dataset2_pool1_seqs.qza \
+--m-barcodes-file merged_mapping_fly_flybodies_dataset2_pool1.txt \
+--m-barcodes-column BarcodeSequence \
+--o-per-sample-sequences dataset2_pool1_demux.qza \
+--o-error-correction-details dataset2_pool1_error_corr.qza
+
+# demux dataset 3 pool 213
+qiime demux emp-paired \
+--i-seqs dataset3_pool213_seqs.qza \
+--m-barcodes-file merged_mapping_fly_flybodies_dataset3_pool213.txt \
+--m-barcodes-column BarcodeSequence \
+--o-per-sample-sequences dataset3_pool213_demux.qza \
+--o-error-correction-details dataset3_pool213_error_corr.qza
+
+# demux dataset 3 pool 214
+qiime demux emp-paired \
+--i-seqs dataset3_pool214_seqs.qza \
+--m-barcodes-file merged_mapping_fly_flybodies_dataset3_pool214.txt \
+--m-barcodes-column BarcodeSequence \
+--o-per-sample-sequences dataset3_pool214_demux.qza \
+--o-error-correction-details dataset3_pool214_error_corr.qza
+
+# demux dataset 3 pool 215
+qiime demux emp-paired \
+--i-seqs dataset3_pool215_seqs.qza \
+--m-barcodes-file merged_mapping_fly_flybodies_dataset3_pool215.txt \
+--m-barcodes-column BarcodeSequence \
+--o-per-sample-sequences dataset3_pool215_demux.qza \
+--o-error-correction-details dataset3_pool215_error_corr.qza
+
+# demux dataset 3 pool 216
+qiime demux emp-paired \
+--i-seqs dataset3_pool216_seqs.qza \
+--m-barcodes-file merged_mapping_fly_flybodies_dataset3_pool216.txt \
+--m-barcodes-column BarcodeSequence \
+--o-per-sample-sequences dataset3_pool216_demux.qza \
+--o-error-correction-details dataset3_pool216_error_corr.qza
+
+# demux dataset 4 pool 247
+qiime demux emp-paired \
+--i-seqs dataset4_pool247_seqs.qza \
+--m-barcodes-file merged_mapping_fly_flybodies_dataset4_pool247.txt \
+--m-barcodes-column BarcodeSequence \
+--o-per-sample-sequences dataset4_pool247_demux.qza \
+--o-error-correction-details dataset4_pool247_error_corr.qza
+##################################### script end #######################################
+
+sbatch demux_pools.sh 
+Submitted batch job 7701179
+
+# all but dataset4_pool247 worked, needed to rerun (just submitted as a job like above) with rev_comp_mapping_barcodes (confirmed this in Aaron Lynne's processing notes as well (from qiime1), and that all other pools were not rev comp):
+qiime demux emp-paired \
+> --i-seqs dataset4_pool247_seqs.qza \
+> --m-barcodes-file merged_mapping_fly_flybodies_dataset4_pool247.txt \
+> --m-barcodes-column BarcodeSequence \
+> --p-rev-comp-mapping-barcodes \
+> --o-per-sample-sequences dataset4_pool247_demux.qza \
+> --o-error-correction-details dataset4_pool247_error_corr.qza
+
+### make all demux.qza files into .qzv files and check them
+
+qiime demux summarize \
+> --i-data dataset2_pool1_demux.qza \
+> --o-visualization dataset2_pool1_demux.qzv
+
+qiime demux summarize \
+> --i-data dataset3_pool213_demux.qza \
+> --o-visualization dataset3_pool213_demux.qzv
+
+qiime demux summarize \
+> --i-data dataset3_pool214_demux.qza \
+> --o-visualization dataset3_pool214_demux.qzv
+
+qiime demux summarize \
+> --i-data dataset3_pool215_demux.qza \
+> --o-visualization dataset3_pool215_demux.qzv
+
+qiime demux summarize \
+> --i-data dataset3_pool216_demux.qza \
+> --o-visualization dataset3_pool216_demux.qzv
+
+qiime demux summarize \
+> --i-data dataset4_pool247_demux.qza \
+> --o-visualization dataset4_pool247_demux.qzv
+
+# all but one pool is good
+# something is wrong with dataset4_pool247 - only has one sample
+# tried redemuxing again with rev comp mapping barcodes - did not work
+# tried again with no golay correction instead of rev comp mapping barcodes - seems like it worked
+
+qiime demux emp-paired \
+--i-seqs dataset4_pool247_seqs.qza \
+--m-barcodes-file merged_mapping_fly_flybodies_dataset4_pool247.txt \
+--m-barcodes-column BarcodeSequence \
+--p-rev-comp-barcodes \
+--p-no-golay-error-correction \
+--o-per-sample-sequences dataset4_pool247_demux.qza \
+--o-error-correction-details dataset4_pool247_error_corr.qza
+
+# note that read counts not the same as they were in qiime1 split_library_logs processed by Dr. Lynne - qiime2 samples have higher reads per sample, so there must be something about demux in qiime2 that retains more reads, or it could be that Lynne processed only the merged reads (so maybe a bunch of reads were thrown out in the merging process before demultiplexing? Whereas I demuxed the raw reads where available with the intention of merging before denoising)
+# otherwise everything looks normal, will proceed with merging the reads
+
+### merge forward and reverse reads
+# applicable for:
+dataset3_pool213
+dataset3_pool214
+dataset3_pool215
+dataset3_pool216
+dataset4_pool247
+
+nano join_reads.sh
+################### script begin ##################################
+#!/bin/sh
+#SBATCH --job-name=join_reads
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# activate qiime
+source activate qiime2-2021.4
+
+# join reads dataset3_pool213
+qiime vsearch join-pairs \
+--i-demultiplexed-seqs dataset3_pool213_demux.qza \
+--p-maxmergelen 260 \
+--o-joined-sequences dataset3_pool213_demux_joined.qza
+
+qiime demux summarize \
+--i-data dataset3_pool213_demux_joined.qza \
+--o-visualization dataset3_pool213_demux_joined.qzv
+
+# join reads dataset3_pool214
+qiime vsearch join-pairs \
+--i-demultiplexed-seqs dataset3_pool214_demux.qza \
+--p-maxmergelen 260 \
+--o-joined-sequences dataset3_pool214_demux_joined.qza
+
+qiime demux summarize \
+--i-data dataset3_pool214_demux_joined.qza \
+--o-visualization dataset3_pool214_demux_joined.qzv
+
+# join reads dataset3_pool215
+qiime vsearch join-pairs \
+--i-demultiplexed-seqs dataset3_pool215_demux.qza \
+--p-maxmergelen 260 \
+--o-joined-sequences dataset3_pool215_demux_joined.qza
+
+qiime demux summarize \
+--i-data dataset3_pool215_demux_joined.qza \
+--o-visualization dataset3_pool215_demux_joined.qzv
+
+# join reads dataset3_pool216
+qiime vsearch join-pairs \
+--i-demultiplexed-seqs dataset3_pool216_demux.qza \
+--p-maxmergelen 260 \
+--o-joined-sequences dataset3_pool216_demux_joined.qza
+
+qiime demux summarize \
+--i-data dataset3_pool216_demux_joined.qza \
+--o-visualization dataset3_pool216_demux_joined.qzv
+
+# join reads dataset4_pool247
+qiime vsearch join-pairs \
+--i-demultiplexed-seqs dataset4_pool247_demux.qza \
+--p-maxmergelen 260 \
+--o-joined-sequences dataset4_pool247_demux_joined.qza
+
+qiime demux summarize \
+--i-data dataset4_pool247_demux_joined.qza \
+--o-visualization dataset4_pool247_demux_joined.qzv
+######################################### script end ############################
+sbatch join_reads.sh 
+Submitted batch job 7721208
+
+# note - ran join_reads.sh a second time with the parameter --p-maxmergelen 260 (this parameter was not included the first time) because some reads were not merging properly
+
+### quality control of reads (just use default)
+# remember to include dataset2 pool 1 in here now
+# organized summit, now working in /scratch/summit/hdeel@colostate.edu/fly_analysis/01_demux
+
+nano quality_control.sh
+############################## script begin ######################################
+#!/bin/sh
+#SBATCH --job-name=demux_247
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# activate qiime
+source activate qiime2-2021.4
+
+# dataset2 pool 1 quality control
+qiime quality-filter q-score \
+--i-demux dataset2_pool1_demux.qza \
+--o-filtered-sequences dataset2_pool1_demux_filtered.qza \
+--o-filter-stats dataset2_pool1_demux_filter_stats.qza
+
+qiime demux summarize \
+--i-data dataset2_pool1_demux_filtered.qza \
+--o-visualization dataset2_pool1_demux_filtered.qzv
+
+# dataset3 pool 213 quality control
+qiime quality-filter q-score \
+--i-demux dataset3_pool213_demux_joined.qza \
+--o-filtered-sequences dataset3_pool213_demux_joined_filtered.qza \
+--o-filter-stats dataset3_pool213_demux_joined_filter_stats.qza
+
+qiime demux summarize \
+--i-data dataset3_pool213_demux_joined_filtered.qza \
+--o-visualization dataset3_pool213_demux_joined_filtered.qzv
+
+# dataset3 pool 214 quality control
+qiime quality-filter q-score \
+--i-demux dataset3_pool214_demux_joined.qza \
+--o-filtered-sequences dataset3_pool214_demux_joined_filtered.qza \
+--o-filter-stats dataset3_pool214_demux_joined_filter_stats.qza
+
+qiime demux summarize \
+--i-data dataset3_pool214_demux_joined_filtered.qza \
+--o-visualization dataset3_pool214_demux_joined_filtered.qzv
+
+# dataset3 pool 215 quality control
+qiime quality-filter q-score \
+--i-demux dataset3_pool215_demux_joined.qza \
+--o-filtered-sequences dataset3_pool215_demux_joined_filtered.qza \
+--o-filter-stats dataset3_pool215_demux_joined_filter_stats.qza
+
+qiime demux summarize \
+--i-data dataset3_pool215_demux_joined_filtered.qza \
+--o-visualization dataset3_pool215_demux_joined_filtered.qzv
+
+# dataset3 pool 216 quality control
+qiime quality-filter q-score \
+--i-demux dataset3_pool216_demux_joined.qza \
+--o-filtered-sequences dataset3_pool216_demux_joined_filtered.qza \
+--o-filter-stats dataset3_pool216_demux_joined_filter_stats.qza
+
+qiime demux summarize \
+--i-data dataset3_pool216_demux_joined_filtered.qza \
+--o-visualization dataset3_pool216_demux_joined_filtered.qzv
+
+# dataset4 pool 247 quality control
+qiime quality-filter q-score \
+--i-demux dataset4_pool247_demux_joined.qza \
+--o-filtered-sequences dataset4_pool247_demux_joined_filtered.qza \
+--o-filter-stats dataset4_pool247_demux_joined_filter_stats.qza
+
+qiime demux summarize \
+--i-data dataset4_pool247_demux_joined_filtered.qza \
+--o-visualization dataset4_pool247_demux_joined_filtered.qzv
+################################# script end ######################################
+sbatch quality_control.sh 
+Submitted batch job 7721432
+
+# look at all .qzv outputs and check that enough reads were retained after merging and decide on trim and trun lengths for each pool - will need to be the same length for each pool for accurate dereplication of rep-seqs when merging
+
+# everything is super high quality - it looks okay to left-trim at 0 and right-trim at 250
+
+### denoise each pool using deblur 
+# must use deblur instead of dada2 because some forward and reverse reads already merged
+# dada2 does not work with already merged data
+# split into two jobs to make sure it will finish on ssky node (only get 24 hrs per job)
+
+# copy relevant files from 01_demux to 02_deblur
+cd /scratch/summit/hdeel@colostate.edu/fly_analysis/01_demux
+cp *filtered.qza ../02_deblur/
+cd ../02_deblur
+ls
+dataset2_pool1_demux_filtered.qza
+dataset3_pool213_demux_joined_filtered.qza
+dataset3_pool214_demux_joined_filtered.qza
+dataset3_pool215_demux_joined_filtered.qza
+dataset3_pool216_demux_joined_filtered.qza
+dataset4_pool247_demux_joined_filtered.qza
+
+nano deblur1.sh
+############################## script begin #################################
+#!/bin/sh
+#SBATCH --job-name=deblur1
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# activate qiime
+source activate qiime2-2021.4
+
+# deblur dataset2_pool1
+qiime deblur denoise-16S \
+--i-demultiplexed-seqs dataset2_pool1_demux_filtered.qza \
+--p-trim-length 250 \
+--p-sample-stats \
+--o-representative-sequences dataset2_pool1_rep_seqs.qza \
+--o-table dataset2_pool1_table.qza \
+--o-stats dataset2_pool1_deblur_stats.qza
+
+qiime feature-table summarize \
+--i-table dataset2_pool1_table.qza \
+--o-visualization dataset2_pool1_table.qzv
+
+qiime deblur visualize-stats \
+--i-deblur-stats dataset2_pool1_deblur_stats.qza \
+--o-visualization dataset2_pool1_deblur_stats.qzv
+
+# deblur dataset3_pool213
+qiime deblur denoise-16S \
+--i-demultiplexed-seqs dataset3_pool213_demux_joined_filtered.qza \
+--p-trim-length 250 \
+--p-sample-stats \
+--o-representative-sequences dataset3_pool213_rep_seqs.qza \
+--o-table dataset3_pool213_table.qza \
+--o-stats dataset3_pool213_deblur_stats.qza
+
+qiime feature-table summarize \
+--i-table dataset3_pool213_table.qza \
+--o-visualization dataset3_pool213_table.qzv
+
+qiime deblur visualize-stats \
+--i-deblur-stats dataset3_pool213_deblur_stats.qza \
+--o-visualization dataset3_pool213_deblur_stats.qzv
+
+# deblur dataset3_pool214
+qiime deblur denoise-16S \
+--i-demultiplexed-seqs dataset3_pool214_demux_joined_filtered.qza \
+--p-trim-length 250 \
+--p-sample-stats \
+--o-representative-sequences dataset3_pool214_rep_seqs.qza \
+--o-table dataset3_pool214_table.qza \
+--o-stats dataset3_pool214_deblur_stats.qza
+
+qiime feature-table summarize \
+--i-table dataset3_pool214_table.qza \
+--o-visualization dataset3_pool214_table.qzv
+
+qiime deblur visualize-stats \
+--i-deblur-stats dataset3_pool214_deblur_stats.qza \
+--o-visualization dataset3_pool214_deblur_stats.qzv
+############################# script end ################################
+sbatch deblur1.sh 
+Submitted batch job 7727177
+
+nano deblur2.sh
+############################# script begin ###############################
+#!/bin/sh
+#SBATCH --job-name=deblur2
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# activate qiime
+source activate qiime2-2021.4
+
+# deblur dataset3_pool215
+qiime deblur denoise-16S \
+--i-demultiplexed-seqs dataset3_pool215_demux_joined_filtered.qza \
+--p-trim-length 250 \
+--p-sample-stats \
+--o-representative-sequences dataset3_pool215_rep_seqs.qza \
+--o-table dataset3_pool215_table.qza \
+--o-stats dataset3_pool215_deblur_stats.qza
+
+qiime feature-table summarize \
+--i-table dataset3_pool215_table.qza \
+--o-visualization dataset3_pool215_table.qzv
+
+qiime deblur visualize-stats \
+--i-deblur-stats dataset3_pool215_deblur_stats.qza \
+--o-visualization dataset3_pool215_deblur_stats.qzv
+
+# deblur dataset3_pool216
+qiime deblur denoise-16S \
+--i-demultiplexed-seqs dataset3_pool216_demux_joined_filtered.qza \
+--p-trim-length 250 \
+--p-sample-stats \
+--o-representative-sequences dataset3_pool216_rep_seqs.qza \
+--o-table dataset3_pool216_table.qza \
+--o-stats dataset3_pool216_deblur_stats.qza
+
+qiime feature-table summarize \
+--i-table dataset3_pool216_table.qza \
+--o-visualization dataset3_pool216_table.qzv
+
+qiime deblur visualize-stats \
+--i-deblur-stats dataset3_pool216_deblur_stats.qza \
+--o-visualization dataset3_pool216_deblur_stats.qzv
+
+# deblur dataset4_pool247
+qiime deblur denoise-16S \
+--i-demultiplexed-seqs dataset4_pool247_demux_joined_filtered.qza \
+--p-trim-length 250 \
+--p-sample-stats \
+--o-representative-sequences dataset4_pool247_rep_seqs.qza \
+--o-table dataset4_pool247_table.qza \
+--o-stats dataset4_pool247_deblur_stats.qza
+
+qiime feature-table summarize \
+--i-table dataset4_pool247_table.qza \
+--o-visualization dataset4_pool247_table.qzv
+
+qiime deblur visualize-stats \
+--i-deblur-stats dataset4_pool247_deblur_stats.qza \
+--o-visualization dataset4_pool247_deblur_stats.qzv
+################################# script end ###############################
+sbatch deblur2.sh 
+Submitted batch job 7727204
+
+### merge all feature tables and rep-seqs
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/02_deblur
+
+source activate qiime2-2021.4
+
+qiime feature-table merge \
+> --i-tables dataset2_pool1_table.qza \
+> --i-tables dataset3_pool213_table.qza \
+> --i-tables dataset3_pool214_table.qza \
+> --i-tables dataset3_pool215_table.qza \
+> --i-tables dataset3_pool216_table.qza \
+> --i-tables dataset4_pool247_table.qza \
+> --o-merged-table merged_table.qza
+
+qiime feature-table summarize \
+> --i-table merged_table.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table.qzv
+
+qiime feature-table merge-seqs \
+> --i-data dataset2_pool1_rep_seqs.qza \
+> --i-data dataset3_pool213_rep_seqs.qza \
+> --i-data dataset3_pool214_rep_seqs.qza \
+> --i-data dataset3_pool215_rep_seqs.qza \
+> --i-data dataset3_pool216_rep_seqs.qza \
+> --i-data dataset4_pool247_rep_seqs.qza \
+> --o-merged-data merged_rep_seqs.qza
+
+qiime feature-table tabulate-seqs \
+> --i-data merged_rep_seqs.qza \
+> --o-visualization merged_rep_seqs.qzv
+
+### classify taxonomy with SILVA
+
+in summit:
+cd /scratch/summit/hdeel@colostate.edu/fly_analysis/03_taxonomy
+
+# transfered merged_rep_seqs.qza from dropbox (/Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/02_deblur/merged_rep_seqs.qza)
+
+# wget the silva classifier, HMP protocols so should be able to just use the pre-trained 515-806 one
+wget https://data.qiime2.org/2021.4/common/silva-138-99-515-806-nb-classifier.qza
+
+nano taxonomy.sh
+######################## script begin ###########################
+#!/bin/sh
+#SBATCH --job-name=taxonomy
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# activate qiime
+source activate qiime2-2021.4
+
+# taxonomy with pre-trained silva classifier
+qiime feature-classifier classify-sklearn \
+--i-reads merged_rep_seqs.qza \
+--i-classifier silva-138-99-515-806-nb-classifier.qza \
+--o-classification taxonomy.qza
+############################ script end #############################
+sbatch taxonomy.sh 
+Submitted batch job 7731260
+
+# job finished, transfer files to dropbox at /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/03_taxonomy
+
+# visualize taxonomy.qza
+# on local computer
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/03_taxonomy
+
+source activate qiime2-2021.4
+
+qiime metadata tabulate \
+> --m-input-file taxonomy.qza \
+> --o-visualization taxonomy.qzv
+
+### filter chloroplast and mitochondria from feature table
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis
+
+qiime taxa filter-table \
+> --i-table 05_feature_tables/merged_table.qza \
+> --i-taxonomy 03_taxonomy/taxonomy.qza \
+> --p-exclude mitochondria,chloroplast \
+> --o-filtered-table 05_feature_tables/merged_table_nochlomito.qza
+
+qiime feature-table summarize \
+> --i-table 05_feature_tables/merged_table_nochlomito.qza \
+> --m-sample-metadata-file ../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization 05_feature_tables/merged_table_nochlomito.qzv
+
+# number of features and total frequency is less, the filtering worked
+
+# doing some organizing of sample filtering from table
+# I have no idea what the fly_associated samples are - description in provided sample sheet says "fly", but the sample name does not say fly
+# just get rid of these, I don't think we will be able to figure out what they are
+# also make a metadata column called sample_type_combo that combines some sample types
+# change L_inner_cheek to inner_cheek, r_bicep to bicep, r_cheek to face
+# not changing much, just making simpler
+
+# also decided to only keep ~100 face samples to keep it more even with the other sourcetracking groups
+# used an online random generator to randomly choose 100 samples from all face samples (https://randomwordgenerator.com/list.php)
+# samples to keep:
+2014.006.1.NS.IIIFD
+2014.009.3.SN.IIFD
+2014.006.3.SN.IIIFD
+2014.009.1.SR.XIVFD
+2014.009.1.SS.XIVFD
+2014.006.3.SR.XIIFD
+2014.009.2.NS.XVIIFD
+2014.006.1.SS.XVFD
+2014.006.2.SR.VFD
+2014.009.2.SN.XIIIFD
+2014.006.1.SR.XIIFD
+2014.009.3.SR.XVFD
+2014.009.0.SN.VIIFD
+2014.009.2.SN.XVIIIFD
+2014.009.3.SN.VIIIFD
+2014.009.0.SS.XVIIFD
+2014.009.3.SR.IIIFD
+2014.009.0.SN.VIIIFD
+2014.009.2.SR.IVFD
+2014.006.2.NS.XVIFD
+2014.009.2.SN.XVIFD
+2014.006.3.SR.XIFD
+2014.009.0.SN.VFD
+2014.006.1.NS.VIIFD
+2014.009.2.SR.VFD
+2014.006.3.SN.XIIFD
+2014.009.3.NS.XIFD
+2014.006.1.NS.XVIFD
+2014.009.0.SN.XVIIIFD
+2014.009.3.SN.XIVFD
+2014.009.2.SS.VFD
+2014.006.2.SS.XVFD
+2014.006.2.NS.IIIFD
+2014.006.1.SS.IFD
+2014.009.2.SS.XVIFD.1
+2014.006.3.SR.IIIFD
+2014.009.1.NS.XVIIFD
+2014.006.1.NS.XIVFD
+2014.009.3.NS.IIIFD
+2014.009.3.SS.VFD
+2014.006.2.SS.IFD
+2014.009.1.NS.XIIIFD
+2014.009.0.SS.XIIIFD
+2014.009.1.SS.XVIFD
+2014.009.2.SN.VIIFD
+2014.009.3.SR.VIFD
+2014.009.0.SN.XFD
+2014.006.0.SN.XIIIFD
+2014.009.2.SR.XIIIFD
+2014.006.3.NS.XFD
+2014.006.2.SR.IIFD
+2014.009.1.NS.XVIFD
+2014.009.1.NS.VIIFD
+2014.009.3.SN.VFD
+2014.006.1.SR.IFD
+2014.009.2.SS.IFD
+2014.009.1.NS.VIFD
+2014.006.1.SN.IXFD
+2014.006.2.NS.IIFD
+2014.006.2.NS.VIFD
+2014.006.3.SR.VIFD
+2014.009.2.NS.VIIFD
+2014.006.0.SN.IIFD
+2014.006.1.SR.IIFD
+2014.006.3.SN.XVIFD
+2014.009.1.NS.IFD
+2014.009.1.SN.XIVFD
+2014.006.3.NS.VIIIFD
+2014.009.1.NS.VFD
+2014.009.1.SR.XIFD
+2014.006.1.NS.IIFD
+2014.009.2.SS.IIIFD
+2014.009.1.SR.XVIIIFD
+2014.009.0.SN.XVIFD
+2014.009.3.NS.XFD
+2014.009.3.SN.XIFD
+2014.006.1.SN.XIIFD
+2014.009.0.SS.XFD
+2014.006.1.SN.XIIIFD
+2014.009.1.NS.XVFD
+2014.009.2.SN.IXFD
+2014.009.1.NS.XVIIIFD
+2014.009.1.SN.XIIIFD
+2014.006.2.SR.IIIFD
+2014.006.0.SN.XVIIFD
+2014.006.1.SN.XVIIIFD
+2014.009.1.SN.IIFD
+2014.006.1.SN.XIVFD
+2014.009.3.NS.XVIFD
+2014.006.1.NS.XVFD
+2014.009.2.SR.XVIIIFD
+2014.009.3.SN.XFD
+2014.006.1.SS.XFD
+2014.009.1.NS.XIVFD
+2014.006.2.NS.XIIFD
+2014.009.0.SS.VIIIFD
+2014.009.3.SN.VIIFD
+2014.009.2.SS.IVFD
+2014.006.2.SS.XIIIFD
+2014.006.1.SS.VIIIFD
+
+# make a metadata column called filtering_include for keeping all relevant samples
+
+qiime feature-table filter-samples \
+--i-table 05_feature_tables/merged_table_nochlomito.qza \
+--m-metadata-file ../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--p-where "[filtering_include]='yes'" \
+--o-filtered-table 05_feature_tables/merged_table_nochlomito_filtered.qza
+
+qiime feature-table summarize \
+> --i-table 05_feature_tables/merged_table_nochlomito_filtered.qza \
+> --m-sample-metadata-file ../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization 05_feature_tables/merged_table_nochlomito_filtered.qzv
+
+### make phylogentic tree
+
+# will try using the 16S Silva 515/806R region sequences provided by QIIME2
+
+cd /scratch/summit/hdeel@colostate.edu/fly_analysis/04_phylogeny
+
+wget https://data.qiime2.org/2021.4/common/sepp-refs-silva-128.qza
+
+nano sepp_tree.sh
+############################### script begin ##################################
+#!/bin/sh
+#SBATCH --job-name=sepp
+#SBATCH --partition=smem
+#SBATCH --nodes=1
+#SBATCH --ntasks=48
+#SBATCH --time=168:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# activate qiime
+source activate qiime2-2021.4
+
+# sepp insertion tree with silva database
+qiime fragment-insertion sepp \
+--i-representative-sequences merged_rep_seqs.qza \
+--i-reference-database sepp-refs-silva-128.qza \
+--p-threads 48 \
+--o-tree insertion_tree.qza \
+--o-placements tree_placements.qza
+################################ script end ###############################
+sbatch sepp_tree.sh 
+Submitted batch job 7773844
+
+# also make a fasttree because it's faster, and this now needs to get out in the next two weeks.
+# summit is under maintenance as per usual, so trying on my computer
+# use the 'auto' option to use all available threads on my computer
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/04_phylogeny
+
+source activate qiime2-2021.4
+
+qiime phylogeny align-to-tree-mafft-fasttree \
+> --i-sequences merged_rep_seqs.qza \
+> --o-alignment aligned_rep_seqs.qza \
+> --o-masked-alignment masked_aligned_rep_seqs.qza \
+> --o-tree unrooted_tree.qza \
+> --o-rooted-tree rooted_tree.qza \
+> --p-n-threads auto
+
+### core metrics pipeline - insertion tree finished, so do with the insertion tree
+# do for fly, and for fly + human
+# first choose a sampling depth
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables
+
+qiime diversity alpha-rarefaction \
+> --i-table merged_table_nochlomito_filtered.qza \
+> --i-phylogeny ../04_phylogeny/insertion_tree.qza \
+> --p-max-depth 20000 \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_alphararefaction.qzv
+
+# will be missing just a little bit of observed features by rarefying, but it's not too bad
+# choosing a depth of 5,937 - will use this for both datasets for consistency
+
+# fly core metrics
+# first get fly only feature table
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables
+
+qiime feature-table filter-samples \
+> --i-table merged_table_nochlomito_filtered.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --p-where "[sample_type]='fly'" \
+> --o-filtered-table merged_table_nochlomito_filtered_flyonly.qza
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_flyonly.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_flyonly.qzv
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/06_core_metrics
+
+qiime diversity core-metrics-phylogenetic \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly.qza \
+> --i-phylogeny ../04_phylogeny/insertion_tree.qza \
+> --p-sampling-depth 5937 \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --output-dir core_metrics_flyonly_5937
+
+# copied rarefied table to /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables and named merged_table_nochlomito_filtered_flyonly_5937.qza, made into a qzv
+
+cd ../05_feature_tables
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_flyonly_5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_flyonly_5937.qzv
+
+# make core metrics qzv files
+
+cd ../06_core_metrics/core_metrics_flyonly_5937
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity observed_features_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization observed-features-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+> --i-alpha-diversity faith_pd_vector.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization faith-pd-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity evenness_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization evenness-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity shannon_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization shannon-group-significance.qzv
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_site_fly \
+> --o-visualization unweighted-unifrac-fly-organ-significance.qzv \
+> --p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_site_fly \
+--o-visualization weighted-unifrac-fly-organ-significance.qzv \ 
+--p-pairwise
+
+qiime diversity beta-group-significance \ 
+--i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \                           
+--o-visualization unweighted-unifrac-season-significance.qzv \
+--p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \  
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization weighted-unifrac-season-significance.qzv \
+--p-pairwise
+
+# fly + human core metrics
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/06_core_metrics
+
+qiime diversity core-metrics-phylogenetic \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered.qza \
+> --i-phylogeny ../04_phylogeny/insertion_tree.qza \
+> --p-sampling-depth 5937 \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --output-dir core_metrics_5937
+
+# transfered rarefied feature tables to /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables and named merged_table_nochlomito_filtered_5937.qza
+
+cd ../05_feature_tables
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_5937.qzv
+
+# make core metrics qzv files
+
+cd ../06_core_metrics/core_metrics_5937
+
+qiime diversity alpha-group-significance \
+> --i-alpha-diversity observed_features_vector.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization observed-features-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity faith_pd_vector.qza \         
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization faith-pd-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity evenness_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization evenness-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity shannon_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization shannon-group-significance.qzv
+
+# do beta group significance for sample_type_combo and placement_season
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_type_combo \
+> --o-visualization unweighted-unifrac-sample-type-significance.qzv \
+> --p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_type_combo \
+--o-visualization weighted-unifrac-sample-type-significance.qzv \ 
+--p-pairwise
+
+qiime diversity beta-group-significance \ 
+--i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \                           
+--o-visualization unweighted-unifrac-season-significance.qzv \
+--p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \  
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization weighted-unifrac-season-significance.qzv \
+--p-pairwise
+
+# human only core metrics
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables
+
+# make human only feature table
+
+qiime feature-table filter-samples \
+> --i-table merged_table_nochlomito_filtered.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --p-where "[sample_type_human_include]='yes'" \
+> --o-filtered-table merged_table_nochlomito_filtered_humanonly.qza
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_humanonly.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_humanonly.qzv
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/06_core_metrics
+
+qiime diversity core-metrics-phylogenetic \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly.qza \
+> --i-phylogeny ../04_phylogeny/insertion_tree.qza \
+> --p-sampling-depth 5937 \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --output-dir core_metrics_humanonly_5937
+
+# transfered rarefied feature table to /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables and named merged_table_nochlomito_filtered_humanonly_5937.qza
+
+cd ../05_feature_tables
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_humanonly_5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_humanonly_5937.qzv
+
+# make core metrics qzv files
+
+cd ../06_core_metrics/core_metrics_humanonly_5937
+
+qiime diversity alpha-group-significance \
+> --i-alpha-diversity observed_features_vector.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization observed-features-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity faith_pd_vector.qza \         
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization faith-pd-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity evenness_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization evenness-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity shannon_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization shannon-group-significance.qzv
+
+# do beta group significance for sample_type_combo and placement_season
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_type_combo \
+> --o-visualization unweighted-unifrac-sample-type-significance.qzv \
+> --p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_type_combo \
+--o-visualization weighted-unifrac-sample-type-significance.qzv \ 
+--p-pairwise
+
+qiime diversity beta-group-significance \ 
+--i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \                           
+--o-visualization unweighted-unifrac-season-significance.qzv \
+--p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \  
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization weighted-unifrac-season-significance.qzv \
+--p-pairwise
+
+### generate bar plots
+# choosing to not do this on a rarefied table - QIIME2 forum suggests not to since it will be using relative abundance
+
+# filter samples below rarefaction depth in fly only table, merged table, and human only table
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/03_taxonomy
+
+qiime feature-table filter-samples \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly.qza \
+> --p-min-frequency 5937 \
+> --o-filtered-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937.qza
+
+qiime feature-table summarize \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937.qzv
+
+qiime feature-table filter-samples \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered.qza \
+> --p-min-frequency 5937 \
+> --o-filtered-table ../05_feature_tables/merged_table_nochlomito_filtered_min5937.qza
+
+qiime feature-table summarize \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_min5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization ../05_feature_tables/merged_table_nochlomito_filtered_min5937.qzv
+
+qiime feature-table filter-samples \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly.qza \
+> --p-min-frequency 5937 \
+> --o-filtered-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_min5937.qza
+
+qiime feature-table summarize \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_min5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_min5937.qzv
+
+# fly taxa plot
+
+qiime taxa barplot \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937.qza \
+> --i-taxonomy taxonomy.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization taxa_barplot_flyonly.qzv
+
+# merged taxa plot
+
+qiime taxa barplot \
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_min5937.qza \       
+--i-taxonomy taxonomy.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization taxa_barplot.qzv
+
+# human only taxa plot
+
+qiime taxa barplot \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_min5937.qza \
+> --i-taxonomy taxonomy.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization taxa_barplot_humanonly.qzv
+
+# these taxa plots are pretty unruly in q2view - will get a better look at them in R
+
+### DEICODE
+# look at which taxa are driving beta diversity separation
+# Uses Aitchison distance metric
+# https://library.qiime2.org/plugins/deicode/19/
+# note that it is not recommended to bin features by taxonomic assignment in deicode
+# and it is not recommended to rarefy your data for deicode
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/07_deicode
+
+# fly only
+
+qiime deicode rpca \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937.qza \
+> --p-min-feature-count 10 \
+> --p-min-sample-count 500 \
+> --o-biplot ordination_flyonly.qza \
+> --o-distance-matrix distance_flyonly.qza
+
+qiime emperor biplot \
+> --i-biplot ordination_flyonly.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-feature-metadata-file ../03_taxonomy/taxonomy.qza \
+> --o-visualization biplot_flyonly.qzv \
+> --p-number-of-features 10
+
+qiime diversity beta-group-significance \
+--i-distance-matrix distance_flyonly.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_site_fly \
+--p-method permanova \
+--o-visualization fly_sample_site_significance.qzv \
+--p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix distance_flyonly.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \       
+--m-metadata-column placement_season \
+--p-method permanova \
+--o-visualization fly_season_significance.qzv \
+--p-pairwise
+
+# hard to pull out features from biplot, but all fly site and season comparisons are significant
+# differences don't look very drastic though
+
+# merged data 
+
+qiime deicode rpca \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_min5937.qza \
+> --p-min-feature-count 10 \
+> --p-min-sample-count 500 \
+> --o-biplot ordination.qza \
+> --o-distance-matrix distance.qza
+
+qiime emperor biplot \
+> --i-biplot ordination.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-feature-metadata-file ../03_taxonomy/taxonomy.qza \
+> --o-visualization biplot.qzv \
+> --p-number-of-features 10
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix distance.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_type_combo \
+> --p-method permanova \
+> --o-visualization sample_type_significance.qzv \
+> --p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix distance.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \ 
+--p-method permanova \
+--o-visualization season_significance.qzv \
+--p-pairwise
+
+# human only
+
+qiime deicode rpca \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_min5937.qza \
+> --p-min-feature-count 10 \
+> --p-min-sample-count 500 \
+> --o-biplot ordination_humanonly.qza \
+> --o-distance-matrix distance_humanonly.qza
+
+qiime emperor biplot \
+> --i-biplot ordination_humanonly.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-feature-metadata-file ../03_taxonomy/taxonomy.qza \
+> --o-visualization biplot_humanonly.qzv \
+> --p-number-of-features 10
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix distance_humanonly.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_type_combo \
+> --p-method permanova \
+> --o-visualization sample_type_humanonly_significance.qzv \
+> --p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix distance_humanonly.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \ 
+--p-method permanova \
+--o-visualization season_humanonly_significance.qzv \
+--p-pairwise
+
+### ANCOM
+# just do for flies only right now, ASV level
+# remember to not use a rarefied table - ANCOM does its own normalization
+# can only do two groups at a time - so will need to run 3 tests for groups with 3 variables 
+# includes season - February, April, July
+# includes fly organ - tarsi, labellum, oocyte
+# need to make metadata columns to be able to filter feature tables for the 3 tests
+# metadata columns are as follows:
+fly_site_ancom1 - 'yes' for tarsi and labellum and no for everything else
+fly_site_ancom2 - 'yes' for tarsi and oocyte
+fly_site_ancom3 - 'yes' for labellum and oocyte
+fly_season_ancom1 - 'yes' for February and April
+fly_season_ancom2 - 'yes' for February and July
+fly_season_ancom3 - 'yes' for April and July
+
+# make 6 different feature tables for the above tests
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables
+
+qiime feature-table filter-samples \
+> --i-table merged_table_nochlomito_filtered_flyonly_min5937.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --p-where "[fly_site_ancom1]='yes'" \
+> --o-filtered-table merged_table_nochlomito_filtered_flyonly_min5937_site_ancom1.qza
+
+qiime feature-table filter-samples \
+--i-table merged_table_nochlomito_filtered_flyonly_min5937.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--p-where "[fly_site_ancom2]='yes'" \
+--o-filtered-table merged_table_nochlomito_filtered_flyonly_min5937_site_ancom2.qza
+
+qiime feature-table filter-samples \
+--i-table merged_table_nochlomito_filtered_flyonly_min5937.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--p-where "[fly_site_ancom3]='yes'" \
+--o-filtered-table merged_table_nochlomito_filtered_flyonly_min5937_site_ancom3.qza
+
+qiime feature-table filter-samples \
+--i-table merged_table_nochlomito_filtered_flyonly_min5937.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--p-where "[fly_season_ancom1]='yes'" \
+--o-filtered-table merged_table_nochlomito_filtered_flyonly_min5937_season_ancom1.qza
+
+qiime feature-table filter-samples \
+--i-table merged_table_nochlomito_filtered_flyonly_min5937.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--p-where "[fly_season_ancom2]='yes'" \
+--o-filtered-table merged_table_nochlomito_filtered_flyonly_min5937_season_ancom2.qza
+
+qiime feature-table filter-samples \
+--i-table merged_table_nochlomito_filtered_flyonly_min5937.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--p-where "[fly_season_ancom3]='yes'" \
+--o-filtered-table merged_table_nochlomito_filtered_flyonly_min5937_season_ancom3.qza
+
+# do ancom now
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/08_ancom
+
+# fly_site_ancom1
+qiime feature-table filter-features \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937_site_ancom1.qza \
+> --p-min-frequency 50 \
+> --p-min-samples 4 \
+> --o-filtered-table fly_site_ancom1_table.qza
+
+qiime composition add-pseudocount \
+--i-table fly_site_ancom1_table.qza \
+--o-composition-table fly_site_ancom1_table_comp.qza
+
+qiime composition ancom \
+> --i-table fly_site_ancom1_table_comp.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_site_fly \
+> --o-visualization fly_site_ancom1.qzv
+
+# fly_site_ancom2
+qiime feature-table filter-features \
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937_site_ancom2.qza \
+--p-min-frequency 50 \
+--p-min-samples 4 \
+--o-filtered-table fly_site_ancom2_table.qza
+
+qiime composition add-pseudocount \
+--i-table fly_site_ancom2_table.qza \
+--o-composition-table fly_site_ancom2_table_comp.qza
+
+qiime composition ancom \
+--i-table fly_site_ancom2_table_comp.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_site_fly \
+--o-visualization fly_site_ancom2.qzv
+
+# fly_site_ancom3
+qiime feature-table filter-features \
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937_site_ancom3.qza \
+--p-min-frequency 50 \
+--p-min-samples 4 \
+--o-filtered-table fly_site_ancom3_table.qza
+
+qiime composition add-pseudocount \
+--i-table fly_site_ancom3_table.qza \
+--o-composition-table fly_site_ancom3_table_comp.qza
+
+qiime composition ancom \
+--i-table fly_site_ancom3_table_comp.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_site_fly \
+--o-visualization fly_site_ancom3.qzv
+
+# fly_season_ancom1
+qiime feature-table filter-features \
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937_season_ancom1.qza \
+--p-min-frequency 50 \
+--p-min-samples 4 \
+--o-filtered-table fly_season_ancom1_table.qza
+
+qiime composition add-pseudocount \
+> --i-table fly_season_ancom1_table.qza \
+> --o-composition-table fly_season_ancom1_table_comp.qza
+
+qiime composition ancom \
+--i-table fly_season_ancom1_table_comp.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization fly_season_ancom1.qzv
+
+# fly_season_ancom2
+qiime feature-table filter-features \
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937_season_ancom2.qza \
+--p-min-frequency 50 \
+--p-min-samples 4 \
+--o-filtered-table fly_season_ancom2_table.qza
+
+qiime composition add-pseudocount \
+--i-table fly_season_ancom2_table.qza \
+--o-composition-table fly_season_ancom2_table_comp.qza
+
+qiime composition ancom \
+--i-table fly_season_ancom2_table_comp.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization fly_season_ancom2.qzv
+
+# fly_season_ancom3
+qiime feature-table filter-features \
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_min5937_season_ancom3.qza \
+--p-min-frequency 50 \
+--p-min-samples 4 \
+--o-filtered-table fly_season_ancom3_table.qza
+
+qiime composition add-pseudocount \
+--i-table fly_season_ancom3_table.qza \
+--o-composition-table fly_season_ancom3_table_comp.qza
+
+qiime composition ancom \
+--i-table fly_season_ancom3_table_comp.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization fly_season_ancom3.qzv
+
+# a few features found to be differntially abundant across each site comparison
+# a ton of features found to be differentially abundant across seasons
+
+### Source tracking
+
+# opened /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/02_metadata/merged_mapping_fly_flybodies_final.txt, saved as sourcetracker_map.txt in /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/09_sourcetracking, deleted all samples from that mapping files not to be used for sourcetracking, and added SourceSink and Env columns
+
+# will want to do ST where each fly organ is a sink (and labelled by organ in the Env column)
+# and will want to do 3 separate ST analyses, one for each season (February, April, July)
+# made metadata files (sourcetracker_map_april.txt, sourcetracker_map_feb.txt, and sourcetracker_map_july.txt) for each month
+# now copy merged_table_nochlomito_filtered_5937.qza into 09_sourcetracking and make 3 separate tables, one for each month
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/09_sourcetracking
+
+source activate qiime2-2021.4
+
+qiime feature-table filter-samples \
+> --i-table merged_table_nochlomito_filtered_5937.qza \
+> --m-metadata-file sourcetracker_map.txt \      
+> --p-where "[st_april]='yes'" \
+> --o-filtered-table merged_table_nochlomito_filtered_5937_april.qza
+
+qiime feature-table filter-samples \
+--i-table merged_table_nochlomito_filtered_5937.qza \
+--m-metadata-file sourcetracker_map.txt \
+--p-where "[st_feb]='yes'" \
+--o-filtered-table merged_table_nochlomito_filtered_5937_feb.qza
+
+qiime feature-table filter-samples \
+--i-table merged_table_nochlomito_filtered_5937.qza \
+--m-metadata-file sourcetracker_map.txt \
+--p-where "[st_july]='yes'" \
+--o-filtered-table merged_table_nochlomito_filtered_5937_july.qza
+
+# export rarefied feature tables as biom table for use in ST
+
+qiime tools export \
+> --input-path merged_table_nochlomito_filtered_5937_april.qza \
+> --output-path merged_table_nochlomito_filtered_5937_april_folder
+
+qiime tools export \
+--input-path merged_table_nochlomito_filtered_5937_feb.qza \  
+--output-path merged_table_nochlomito_filtered_5937_feb_folder
+
+qiime tools export \
+--input-path merged_table_nochlomito_filtered_5937_july.qza \
+--output-path merged_table_nochlomito_filtered_5937_july_folder
+
+# rename all biom tables and move out of their folders and directly into 09_sourcetracking
+
+move biom tables and mapping files onto summit into /scratch/summit/hdeel\@colostate.edu/fly_analysis/05_sourcetracker/
+
+# make sure ST2 is installed
+pip install https://github.com/biota/sourcetracker2/archive/master.zip
+
+# note that since this is the developer version (not the conda env), don't need to activate an st2 environment
+
+# since using a rarefied biom table, keep source and sink rarefaction depths at 0
+
+in 05_sourcetracker in summit:
+
+nano fly_sourcetracker_april.sh
+################## script begin ########################
+#!/bin/sh
+#SBATCH --job-name=fly_sourcetracker_april                   
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# Sourcetracker command
+sourcetracker2 \
+-i merged_table_nochlomito_filtered_5937_april.biom \
+-m sourcetracker_map_april.txt \
+--source_rarefaction_depth 0 \
+--sink_rarefaction_depth 0 \
+-o STout_april \
+--jobs 24
+############################ script end ######################
+sbatch fly_sourcetracker_april.sh 
+Submitted batch job 7812640
+
+nano fly_sourcetracker_feb.sh
+################## script begin ########################
+#!/bin/sh
+#SBATCH --job-name=fly_sourcetracker_feb                   
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# Sourcetracker command
+sourcetracker2 \
+-i merged_table_nochlomito_filtered_5937_feb.biom \
+-m sourcetracker_map_feb.txt \
+--source_rarefaction_depth 0 \
+--sink_rarefaction_depth 0 \
+-o STout_feb \
+--jobs 24
+############################ script end ######################
+sbatch fly_sourcetracker_feb.sh 
+Submitted batch job 7812641
+
+nano fly_sourcetracker_july.sh
+################## script begin ########################
+#!/bin/sh
+#SBATCH --job-name=fly_sourcetracker_july                   
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# Sourcetracker command
+sourcetracker2 \
+-i merged_table_nochlomito_filtered_5937_july.biom \
+-m sourcetracker_map_july.txt \
+--source_rarefaction_depth 0 \
+--sink_rarefaction_depth 0 \
+-o STout_july \
+--jobs 24
+############################ script end ######################
+sbatch fly_sourcetracker_july.sh 
+Submitted batch job 7812642
+
+# look at ST results in R
+
+### Core features analysis
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/10_core_features
+
+source activate qiime2-2021.4
+
+# just use default core-features parameters
+# looking at core features of fly only data, using rarefied table
+
+qiime feature-table core-features \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_flyonly_5937.qza \
+> --o-visualization core_features_flyonly.qzv
+
+### Some data manipulating for making taxa plots in R
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/03_taxonomy
+
+# open taxonomy.txt and save as taxonomy_R.txt
+# in taxonomy_R.txt in Excel, get rid of all taxa prefixes (e.g., k__ and p__) using find and replace
+# save txt, and import into qiime2
+
+source activate qiime2-2021.4
+
+qiime tools import \
+--type 'FeatureData[Taxonomy]' \
+--input-path taxonomy_R.txt \
+--output-path taxonomy_R.qza
+
+qiime metadata tabulate \
+> --m-input-file taxonomy_R.qza \
+> --o-visualization taxonomy_R.qzv
+
+# taxonomy_R.qzv looks good, editing worked - can now use taxonomy_R.qza and phyloseq for making taxa plots in R
+
+#####################################
+# Heather Deel
+# July 21st, 2021
+# Filtering out face samples from pool 247
+# They make source tracker sources unbalanced, and were part of a different project that I think is causing batch effects - wanted to try to include, but we still have other face samples so it isn't necessary
+######################################
+
+# can just filter out dataset4_pool247 - these are all the face samples from Daniel's face project, and should still have all human sample types for all 10 cadavers even after filtering this out
+
+# first make feature table with fly and human data but no pool 247
+
+source activate qiime2-2021.4
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables
+
+qiime feature-table filter-samples \
+> --i-table merged_table_nochlomito_filtered.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --p-where "[face_filtering_include]='yes'" \
+> --o-filtered-table merged_table_nochlomito_filtered_no247.qza
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_no247.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_no247.qzv
+
+# next make a human only feature table with pool 247 filtered out - just filter the human only table by the face_filtering_include column
+
+qiime feature-table filter-samples \
+> --i-table merged_table_nochlomito_filtered_humanonly.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --p-where "[face_filtering_include]='yes'" \
+> --o-filtered-table merged_table_nochlomito_filtered_humanonly_no247.qza
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_humanonly_no247.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_humanonly_no247.qzv
+
+# make this table with chlo and mito just so we have the numbers for manuscript
+
+qiime feature-table filter-samples \
+> --i-table merged_table.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --p-where "[face_filtering_include]='yes'" \
+> --o-filtered-table merged_table_no247.qza
+
+qiime feature-table summarize \
+> --i-table merged_table_no247.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_no247.qzv 
+
+### core metrics with new feature tables with no pool 247
+
+cd ../06_core_metrics
+
+# fly and human no 247 core metrics
+
+qiime diversity core-metrics-phylogenetic \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_no247.qza \
+> --i-phylogeny ../04_phylogeny/insertion_tree.qza \
+> --p-sampling-depth 5937 \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --output-dir core_metrics_no247_5937
+
+# copy rarefied table to /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables and named merged_table_nochlomito_filtered_no247_5937.qza, made into a qzv
+
+cd ../05_feature_tables
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_no247_5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_no247_5937.qzv
+
+# make core-metrics qzv files
+
+cd ../06_core_metrics/core_metrics_no247_5937
+
+qiime diversity alpha-group-significance \
+> --i-alpha-diversity observed_features_vector.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization observed-features-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity faith_pd_vector.qza \         
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization faith-pd-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity evenness_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization evenness-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity shannon_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization shannon-group-significance.qzv
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_type_combo \
+> --o-visualization unweighted-unifrac-sample-type-significance.qzv \
+> --p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_type_combo \
+--o-visualization weighted-unifrac-sample-type-significance.qzv \ 
+--p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \ 
+--o-visualization unweighted-unifrac-season-significance.qzv \
+--p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization weighted-unifrac-season-significance.qzv \ 
+--p-pairwise
+
+# human only no 247 core metrics
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/06_core_metrics
+
+qiime diversity core-metrics-phylogenetic \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_no247.qza \
+> --i-phylogeny ../04_phylogeny/insertion_tree.qza \
+> --p-sampling-depth 5937 \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --output-dir core_metrics_humanonly_no247_5937
+
+# transfered rarefied feature table to /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/05_feature_tables and named merged_table_nochlomito_filtered_humanonly_no247_5937.qza
+
+cd ../05_feature_tables
+
+qiime feature-table summarize \
+> --i-table merged_table_nochlomito_filtered_humanonly_no247_5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization merged_table_nochlomito_filtered_humanonly_no247_5937.qzv
+
+# make core metrics qzv files
+
+cd ../06_core_metrics/core_metrics_humanonly_no247_5937
+
+qiime diversity alpha-group-significance \             
+--i-alpha-diversity observed_features_vector.qza \          
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization observed-features-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity faith_pd_vector.qza \         
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization faith-pd-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity evenness_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization evenness-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+--i-alpha-diversity shannon_vector.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization shannon-group-significance.qzv
+
+qiime diversity beta-group-significance \              
+--i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_type_combo \
+--o-visualization unweighted-unifrac-sample-type-significance.qzv \
+--p-pairwise
+
+qiime diversity beta-group-significance \              
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \  
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column sample_type_combo \
+--o-visualization weighted-unifrac-sample-type-significance.qzv \
+--p-pairwise
+
+qiime diversity beta-group-significance \              
+--i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization unweighted-unifrac-season-significance.qzv \
+--p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \
+--o-visualization weighted-unifrac-season-significance.qzv \ 
+--p-pairwise
+
+### generate bar plots of new feature tables without pool 247
+# don't do on rarefied table
+# filter samples below rarefaction depth in merged table no 247 and human only table no 247
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/03_taxonomy
+
+qiime feature-table filter-samples \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_no247.qza \
+> --p-min-frequency 5937 \
+> --o-filtered-table ../05_feature_tables/merged_table_nochlomito_filtered_no247_min5937.qza
+
+qiime feature-table summarize \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_no247_min5937.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization ../05_feature_tables/merged_table_nochlomito_filtered_no247_min5937.qzv
+
+qiime feature-table filter-samples \
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_no247.qza \          
+--p-min-frequency 5937 \
+--o-filtered-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_no247_min5937.qza
+
+qiime feature-table summarize \     
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_no247_min5937.qza \
+--m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_no247_min5937.qzv
+
+# make taxa plots
+
+qiime taxa barplot \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_no247_min5937.qza \
+> --i-taxonomy taxonomy.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --o-visualization taxa_barplot_no247.qzv
+
+qiime taxa barplot \
+--i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_no247_min5937.qza \
+--i-taxonomy taxonomy.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--o-visualization taxa_barplot_humanonly_no247.qzv
+
+### deicode of the no pool 247 feature tables
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/07_deicode
+
+# merged table no 247
+
+qiime deicode rpca \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_no247_min5937.qza \
+> --p-min-feature-count 10 \
+> --p-min-sample-count 500 \
+> --o-biplot ordination_no247.qza \
+> --o-distance-matrix distance_no247.qza
+
+qiime emperor biplot \
+> --i-biplot ordination_no247.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-feature-metadata-file ../03_taxonomy/taxonomy.qza \
+> --o-visualization biplot_no247.qzv \
+> --p-number-of-features 10
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix distance_no247.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_type_combo \
+> --p-method permanova \
+> --o-visualization sample_type_significance_no247.qzv \
+> --p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix distance_no247.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \ 
+--p-method permanova \
+--o-visualization season_significance_no247.qzv \
+--p-pairwise
+
+# human only table no 247
+
+qiime deicode rpca \
+> --i-table ../05_feature_tables/merged_table_nochlomito_filtered_humanonly_no247_min5937.qza \
+> --p-min-feature-count 10 \
+> --p-min-sample-count 500 \
+> --o-biplot ordination_humanonly_no247.qza \
+> --o-distance-matrix distance_humanonly_no247.qza
+
+qiime emperor biplot \
+> --i-biplot ordination_humanonly_no247.qza \
+> --m-sample-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-feature-metadata-file ../03_taxonomy/taxonomy.qza \
+> --o-visualization biplot_humanonly_no247.qzv \
+> --p-number-of-features 10
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix distance_humanonly_no247.qza \
+> --m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column sample_type_combo \
+> --p-method permanova \
+> --o-visualization sample_type_significance_humanonly_no247.qzv \
+> --p-pairwise
+
+qiime diversity beta-group-significance \
+--i-distance-matrix distance_humanonly_no247.qza \
+--m-metadata-file ../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column placement_season \ 
+--p-method permanova \
+--o-visualization season_significance_humanonly_no247.qzv \
+--p-pairwise
+
+### redo ST without pool 247
+# dataset4_pool247 is all in February
+# can use the same April and July folders for ST, but need to refilter Feb table
+# Just do this from the merged 5937 no 247 table
+# copy copy merged_table_nochlomito_filtered_no247_5937.qza into 09_sourcetracking and use to make new Feb table
+# also delete dataset4_pool247 from sourcetracker_map.txt and sourcetracker_map_feb.txt in 09_sourcetracking just for good measure
+
+source activate qiime2-2021.4
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/09_sourcetracking
+
+qiime feature-table filter-samples \
+> --i-table merged_table_nochlomito_filtered_no247_5937.qza \
+> --m-metadata-file sourcetracker_map.txt \
+> --p-where "[st_feb]='yes'" \
+> --o-filtered-table merged_table_nochlomito_filtered_no247_5937_feb.qza
+
+# export new feb feature table as a biom table for use in ST
+
+qiime tools export \
+> --input-path merged_table_nochlomito_filtered_no247_5937_feb.qza \
+> --output-path merged_table_nochlomito_filtered_no247_5937_feb_folder
+
+# rename the biom table and move out of the folder and directly into 09_sourcetracking
+
+# move new feb mapping file and new feb feature table onto summit at /scratch/summit/hdeel\@colostate.edu/fly_analysis/05_sourcetracker/
+
+# rerun ST job for feb
+
+in 05_sourcetracker in summit:
+
+nano fly_sourcetracker_feb_no247.sh
+##################### job script begin ############################
+#!/bin/sh
+#SBATCH --job-name=fly_sourcetracker_feb_no247
+#SBATCH --partition=ssky
+#SBATCH --nodes=1
+#SBATCH --ntasks=24
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=hdeel@colostate.edu
+
+# Sourcetracker command
+sourcetracker2 \
+-i merged_table_nochlomito_filtered_no247_5937_feb.biom \
+-m sourcetracker_map_feb.txt \
+--source_rarefaction_depth 0 \
+--sink_rarefaction_depth 0 \
+-o STout_feb_no247 \
+--jobs 24
+##################### job script end ##############################
+sbatch fly_sourcetracker_feb_no247.sh 
+Submitted batch job 7993822
+
+# should now have everything needed for replotting without pool 247 in R
+
+### when done, move raw files to projects directory in summit and Sharepoint for long-term storage
+
+############################################
+# Heather Deel
+# August 18th, 2021
+# Adding in some beta group significance between just fly vs human samples
+############################################
+
+source activate qiime2-2021.4
+
+cd /Users/heatherdeel/Dropbox/SHSU_body_farm_projects/Projects/fly/01_qiime2_analysis/06_core_metrics/core_metrics_no247_5937
+
+qiime diversity beta-group-significance \
+> --i-distance-matrix unweighted_unifrac_distance_matrix.qza \
+> --m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+> --m-metadata-column fly_or_human \
+> --o-visualization unweighted-unifrac-humanvsfly-significance.qzv
+
+qiime diversity beta-group-significance \
+--i-distance-matrix weighted_unifrac_distance_matrix.qza \ 
+--m-metadata-file ../../../02_metadata/merged_mapping_fly_flybodies_final.txt \
+--m-metadata-column fly_or_human \
+--o-visualization weighted-unifrac-humanvsfly-significance.qzv
+
+
+
+
+
+
+
+
+
+
+
+
+

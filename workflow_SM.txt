@@ -1,0 +1,480 @@
+READ ME: Calliphoridae Microbiome Analysis
+Author: Sophia Montoya 
+
+Study Information: This study was originally run with data collected from Dr. Jessica Metcalf's lab in QIIME. An updated analysis to rerun the data in QIIME2 was the main goal for the analysis. The background information involved viewing the relationship between calliphoridaes (blow flies) on cadavers. Specific interest was to view what microbes flies carry to the cadavers, and what part of the flies were carrying the majority of the microbes. This would be to view the microbial relationship between the flies and cadavers. 
+
+
+Qiita Data Wrangling and Analysis:	The dataset was rerun in Qiita to update the files on the Qiita platform and create artifacts suitable for QIIME2. The original data was run in QIIME and needed to be updated in analysis for QIIME2. Dr. Alex Emmons aided in the Qiita platform analysis to create the reference artifacts. The Qiita study ID is 13301 as "Microbes from Calliphoridae on Cadavers."
+
+Files from the initial analysis involving QIIME were uploaded to Qiita. Prep files for both dataset2 and datasets1/3 were created and uploaded to Qiita to create an anlaysis. The dataset2 barcodes and raw reads were used to begin the dataset2 analysis. Since dataset2 only had one pool of reads and barcodes, only pool1 was used in the analysis. The fastq pool for dataset2 began the flow chart workflow where the libraries were then split. After the split they were demultiplexed then trimmed to a length of 150. Deblur was then used to create a reference hit biom table. This output included the reference hit biom table, reference hit sequences, and relabelled tree. These are the three dataset2 artifacts that were downloaded from Qiita and used in the Qiime2 analysis bellow. 
+
+A similar workflow was used for the dataset 1 and 3 pools. Since dataset1 and 3 were combined, they shared a prep file. These data has three different pools (213, 214, and 215). Each pool had 2 reads and 1 corresponding barcode that were uploaded into Qiita to create the fastq barcodes artifact. From the barcodes the libraries were split, demultiplexed, and trimmed to a length of 150. Then Deblur was used to create a reference hit biom table. The ouput in the reference table were the reference hit biom table, reference hit sequences, and re-labelled tree. These three artifacts were then downloaded from Qiita and used in the Qiime2 analysis bellow. 
+					
+
+QIIME2 Analysis:
+
+The data from the Qiita flowchart (feature table, feature data sequences, and phylogeny trees) was downloaded and imported to QIIME2 for analysis. 
+The QIIME2 tutorials were followed regarding importing tables and sequences. Note that since the data was collected separately for dataset 2, while 
+dataset 1 and 3 were combined, the import steps had to be run to import the two corresponding artifacts separately. The specific commands are listed bellow.
+All QIIME2 analysis were run on the RMAC Supercomputer - Summit. Access to Summit was through a local Ubuntu Linux platform. The version of QIIME2 to run
+the analysis was qiime2-2020.8.
+
+These imports were for dataset 2:
+
+qiime tools import \
+  --input-path d2_reference-hit.biom \
+  --type 'FeatureTable[Frequency]' \
+  --output-path feature-table-1.qza
+
+qiime tools import \
+  --input-path d2_tree.relabelled.tre \
+  --output-path unrooted-tree.qza \
+  --type 'Phylogeny[Unrooted]'
+
+qiime tools import \
+  --input-path d2_tree.relabelled.tre \
+  --output-path rooted-tree.qza \
+  --type 'Phylogeny[Rooted]'
+
+qiime tools import \
+  --input-path d2_reference-hit.seqs.fa \
+  --output-path sequences.qza \
+  --type 'FeatureData[Sequence]'
+
+The commands used for the combined datsets of 1 and 3 were:
+
+qiime tools import \
+  --input-path d3_reference-hit.biom \
+  --type 'FeatureTable[Frequency]' \
+  --output-path feature-table-3.qza
+
+qiime tools import \
+  --input-path d3_reference-hit.seqs.fa \
+  --output-path sequences-3.qza \
+  --type 'FeatureData[Sequence]'
+
+qiime tools import \
+  --input-path d3_tree.relabelled.tre \
+  --output-path unrooted-tree3.qza \
+  --type 'Phylogeny[Unrooted]'
+
+qiime tools import \
+  --input-path d3_tree.relabelled.tre \
+  --output-path rooted-tree3.qza \
+  --type 'Phylogeny[Rooted]'
+
+After the artifacts were imported they were merged in order to complete the analysis on all three datasets collectively. The merge involved merging the feature table and sequences. QIIME2 forum tutorials were again followed. The commands used to combine the artifacts were:
+
+qiime feature-table merge \
+  --i-tables feature-table-1.qza \
+  --i-tables feature-table-3.qza \
+  --o-merged-table merged-table.qza
+
+qiime feature-table merge-seqs \
+  --i-data sequences.qza \
+  --i-data sequences-3.qza \
+  --o-merged-data merged-rep-seqs.qza
+
+A Greengenes classifier was used to create a taxonomy file to view taxonomy and filter chloroplasts and mitochondria. The classifier used was Greengenes 13_8 99% OTUs full-length sequences. The greengenes database (https://greengenes.secondgenome.com/) housed the classifier used and is provided by 
+Second Genome, Inc.
+	The site used to download the classifier was: "https://data.qiime2.org/2018.2/common/gg-13-8-99-515-806-nb-classifier.qza" 
+
+The following commands were then used to create a taxonomy file and view the corresponding visualization.
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier gg-13-8-99-515-806-nb-classifier.qza \
+  --i-reads merged-rep-seqs.qza \
+  --o-classification taxonomy.qza
+
+qiime metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv
+
+The taxonomy files were then used to filter out mitochondria and chloroplasts from the feature table. Taxa bar plots were then generated to view taxonomy.
+The following commands used were: 
+
+qiime taxa filter-table \
+  --i-table merged-table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-exclude mitochondria,chloroplast \
+  --o-filtered-table filtered-table-no-mito.qza
+
+qiime taxa barplot \
+  --i-table filtered-table-no-mito.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file fly_metadata.txt \
+  --o-visualization filtered-taxa-bar-plots.qzv
+
+Visualizations were created to view the feature table and sequences. The following code was used:
+
+qiime feature-table summarize \
+  --i-table filtered-table-no-mito.qza \
+  --o-visualization filtered-merged_table.qzv \
+  --m-sample-metadata-file fly_metadata.txt
+
+qiime feature-table tabulate-seqs \
+  --i-data merged-rep-seqs.qza \
+  --o-visualization merged-rep-seqs.qzv
+
+The filtered data was then used to create alpha rarefaction plots to help identify a place to rarefy. The code used was:
+
+qiime diversity alpha-rarefaction \
+  --i-table filtered-table-no-mito.qza \
+  --p-max-depth 9000 \
+  --m-metadata-file fly_metadata.txt \
+  --o-visualization filt-merged-alpha-rarefaction.qzv
+
+Based on the rarefaction plots the chosen rarefied depth was 4370 where 81.05% of samples were retained. This depth helped capture more of the richness in the data, while a higher rarefied depth led to a greater sample loss. Dr. Alex Emmons was consulted and helped advise on which depth to rarefy at. 
+The rarefied data was then viewed with a corresponding visualization. The following code was used:
+
+qiime feature-table rarefy \
+  --i-table filtered-table-no-mito.qza \
+  --p-sampling-depth 4370 \
+  --o-rarefied-table rarefied_table-F.qza
+
+qiime feature-table summarize \
+  --i-table rarefied_table-F.qza \
+  --o-visualization rarefied-table-F.qzv \
+  --m-sample-metadata-file fly_metadata.txt
+
+A phylogenetic tree was then created to use in Core Metric Analysis. The QIIME2 tutorials were again used to create the Core Metric Analysis. The following commands were used:
+
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences merged-rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree-m.qza \
+  --o-rooted-tree rooted-tree-m.qza
+
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree-m.qza \
+  --i-table rarefied_table-F.qza \
+  --p-sampling-depth 4000 \
+  --m-metadata-file fly_metadata.txt \
+  --output-dir core-metrics-results-filtered
+
+The core metrics were downloaded and visualizations were viewed with QIIME2 View. The (.qz) files of analysis were used in R to create more visually appealing graphics. The types of files used in R were: Shannon's box plots, taxonomy, Faith's PD, and PCoA plots (weighted/unwieghted unifracs). The R code was written in a script with all the used filed in a data folder inside an R project to keep everything together. The R script is annotated to help go more in depth into each section of the R code. 
+
+A Source Tracker analysis had hoped to be run until the corresponding cadaver information (barcodes/sequences) was not recovered. This led to the project shifting focus onto fly diversity in general rather than flies in relation to the cadavers. The main data of interest focused on fly sample site, collection season, and taxonomy. A differential abundance analysis became of interest regarding seasons and fly sample site using ANCOM. Tha QIIME2 ANCOM tutorial was followed to produce the results. Scripts were run in order to complete the analysis. 
+
+The fist ANCOM run was looking at the samples from July (season) and viewing the sample_site column, which related to the fly site (tarsi, oocyte, labellum). The first visualization did not include the taxonomic level. In the same script, the July filtered table was used again to include the taxonomic level 6 (genus) ANCOM analysis. All the taxonomic analysis included an l6 to differentiate  from the non-taxonomic analysis. The script used was:
+
+#!/bin/sh
+#SBATCH --job-name=ancom_july
+#SBATCH --partition=smem
+#SBATCH --nodes=1
+#SBATCH --ntasks=10
+#SBATCH --time=35:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=samontoy@colostate.edu
+
+
+# Activate qiime
+source activate qiime2-2020.8
+
+# ANCOM command for filtered table (July)
+qiime feature-table filter-samples \
+  --i-table rarefied_table-F.qza \
+  --m-metadata-file fly_metadata.txt \
+  --p-where "[placement_season]='July'" \
+  --o-filtered-table July-table.qza
+
+qiime composition add-pseudocount \
+  --i-table July-table.qza \
+  --o-composition-table comp-July-table.qza
+
+# output visualization July ANCOM with no taxonomic level
+qiime composition ancom \
+  --i-table comp-July-table.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column sample_site \
+  --o-visualization ancom-season-July.qzv
+
+# TAXONOMIC ANALYSIS - using the July filtered table above
+
+# Table including the genus level for analysis
+qiime taxa collapse \
+  --i-table July-table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-level 6 \
+  --o-collapsed-table July-table-l6.qza
+
+qiime composition add-pseudocount \
+  --i-table July-table-l6.qza \
+  --o-composition-table comp-Julyy-table-l6.qza
+
+# ANCOM Visualization including the genus level
+qiime composition ancom \
+  --i-table comp-Julyy-table-l6.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column sample_site \
+  --o-visualization l6-ancom-July.qzv
+
+ANCOM was then run looking at the samples from April (season) and viewing the sample_site column, which related to the fly site (tarsi, oocyte, labellum). The first visualization did not include the taxonomic level. In the same script, the April filtered table was used again to include the taxonomic level 6 (genus) ANCOM analysis. All the taxonomic analysis included an l6 to differentiate from the non-taxonomic analysis. The script used was:
+
+#!/bin/sh
+#SBATCH --job-name=ancom_april
+#SBATCH --partition=smem
+#SBATCH --nodes=1
+#SBATCH --ntasks=10
+#SBATCH --time=35:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=samontoy@colostate.edu
+
+
+# Activate qiime
+source activate qiime2-2020.8
+
+# ANCOM command for filtered table (April)
+qiime feature-table filter-samples \
+  --i-table rarefied_table-F.qza \
+  --m-metadata-file fly_metadata.txt \
+  --p-where "[placement_season]='April'" \
+  --o-filtered-table April-table.qza
+
+qiime composition add-pseudocount \
+  --i-table April-table.qza \
+  --o-composition-table comp-April-table.qza
+
+# output visualization April ANCOM with no taxonomic level
+qiime composition ancom \
+  --i-table comp-April-table.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column sample_site \
+  --o-visualization ancom-season-April.qzv 
+
+# TAXONOMIC ANALYSIS - using the April filtered table above
+
+# Table including the genus level for analysis
+qiime taxa collapse \
+  --i-table April-table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-level 6 \
+  --o-collapsed-table April-table-l6.qza
+
+qiime composition add-pseudocount \
+  --i-table April-table-l6.qza \
+  --o-composition-table comp-April-table-l6.qza
+
+# Visualization for ANCOM April with genus level
+qiime composition ancom \
+  --i-table comp-April-table-l6.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column sample_site \
+  --o-visualization l6-ancom-April.qzv
+
+ANCOM was run looking at the samples from February (season) and viewing the sample_site column, which related to the fly site (tarsi, oocyte, labellum). The first visualization did not include the taxonomic level. In the same script, the February filtered table was used again to include the taxonomic level 6 (genus) ANCOM analysis. All the taxonomic analysis included an l6 to differentiate from the non-taxonomic analysis. The script used was:
+
+#!/bin/sh
+#SBATCH --job-name=ancom_feb
+#SBATCH --partition=smem
+#SBATCH --nodes=1
+#SBATCH --ntasks=10
+#SBATCH --time=35:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=samontoy@colostate.edu
+
+
+# Activate qiime
+source activate qiime2-2020.8
+
+# ANCOM command for filtered table (February)
+qiime feature-table filter-samples \
+  --i-table rarefied_table-F.qza \
+  --m-metadata-file fly_metadata.txt \
+  --p-where "[placement_season]='February'" \
+  --o-filtered-table Feb-table.qza
+
+qiime composition add-pseudocount \
+  --i-table Feb-table.qza \
+  --o-composition-table comp-Feb-table.qza
+
+# ANCOM visual without taxonomic analysis - February
+qiime composition ancom \
+  --i-table comp-Feb-table.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column sample_site \
+  --o-visualization ancom-season-Feb.qzv 
+
+# TAXONOMIC ANALYSIS - using the February filtered table above
+
+# Table including the genus level for analysis
+qiime taxa collapse \
+  --i-table Feb-table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-level 6 \
+  --o-collapsed-table Feb-table-l6.qza
+
+qiime composition add-pseudocount \
+  --i-table Feb-table-l6.qza \
+  --o-composition-table comp-Feb-table-l6.qza
+
+# Taxonomic ANCOM visual for February
+qiime composition ancom \
+  --i-table comp-Feb-table-l6.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column sample_site \
+  --o-visualization l6-ancom-Feb.qzv
+
+Next ANCOM was run to view the analysis for fly sample sites. The first analysis filtered to Tarsi and viewed the placement_season column, which related to the season the samples were placed (February, April, July).  The first visualization did not include the taxonomic level. In the same script, the Tarsi filtered table was used again to include the taxonomic level 6 (genus) ANCOM analysis. All the taxonomic analysis included an l6 to differentiate from the non-taxonomic analysis. The script used was:
+
+#!/bin/sh
+#SBATCH --job-name=ancom_tarsi
+#SBATCH --partition=smem
+#SBATCH --nodes=1
+#SBATCH --ntasks=10
+#SBATCH --time=35:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=samontoy@colostate.edu
+
+
+# Activate qiime
+source activate qiime2-2020.8
+
+# ANCOM command for filtered table (Tarsi)
+qiime feature-table filter-samples \
+  --i-table rarefied_table-F.qza \
+  --m-metadata-file fly_metadata.txt \
+  --p-where "[sample_site]='Tarsi'" \
+  --o-filtered-table tarsi-table.qza
+
+qiime composition add-pseudocount \
+  --i-table tarsi-table.qza \
+  --o-composition-table comp-tarsi-table.qza
+
+# ANCOM visual without taxonomic analysis - Tarsi
+qiime composition ancom \
+  --i-table comp-tarsi-table.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column placement_season \
+  --o-visualization ancom-site-tarsi.qzv
+
+# TAXONOMIC ANALYSIS - using the Tarsi filtered table above
+
+# Table including the genus level for analysis
+qiime taxa collapse \
+  --i-table tarsi-table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-level 6 \
+  --o-collapsed-table tarsi-table-l6.qza
+
+qiime composition add-pseudocount \
+  --i-table tarsi-table-l6.qza \
+  --o-composition-table comp-tarsi-table-l6.qza
+
+# Taxonomic ANCOM visual for Tarsi
+qiime composition ancom \
+  --i-table comp-labellum-table-l6.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column placement_season \
+  --o-visualization l6-ancom-tarsi.qzv   
+
+ANCOM was run again to see the sample site of Oocyte and viewed the placement_season column, which related to the season the samples were placed (February, April, July). The first visualization did not include the taxonomic level. In the same script, the Oocyte filtered table was used again to include the taxonomic level 6 (genus) ANCOM analysis. All the taxonomic analysis included an l6 to differentiate from the non-taxonomic analysis.
+The script used was:
+
+#!/bin/sh
+#SBATCH --job-name=ancom_oocyte
+#SBATCH --partition=smem
+#SBATCH --nodes=1
+#SBATCH --ntasks=10
+#SBATCH --time=35:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=samontoy@colostate.edu
+
+
+# Activate qiime
+source activate qiime2-2020.8
+
+# ANCOM command for filtered table (Oocyte)
+qiime feature-table filter-samples \
+  --i-table rarefied_table-F.qza \
+  --m-metadata-file fly_metadata.txt \
+  --p-where "[sample_site]='Oocyte'" \
+  --o-filtered-table oocyte-table.qza
+
+qiime composition add-pseudocount \
+  --i-table oocyte-table.qza \
+  --o-composition-table comp-oocyte-table.qza
+
+# Visual for the oocyte filtered table without the taxonomic analysis
+qiime composition ancom \
+  --i-table comp-oocyte-table.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column placement_season \
+  --o-visualization ancom-site-oocyte.qzv
+
+
+# TAXONOMIC ANALYSIS - using the Oocyte filtered table above
+
+# Table including the genus level for analysis
+qiime taxa collapse \
+  --i-table oocyte-table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-level 6 \
+  --o-collapsed-table oocyte-table-l6.qza
+
+qiime composition add-pseudocount \
+  --i-table oocyte-table-l6.qza \
+  --o-composition-table comp-oocyte-table-l6.qza
+
+# ANCOM taxonomic visual for oocyte
+qiime composition ancom \
+  --i-table comp-oocyte-table-l6.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column placement_season \
+  --o-visualization l6-ancom-oocyte.qzv  
+
+The last ANCOM was run to see the sample site of Labellum and viewed the placement_season column, which related to the season the samples were placed (February, April, July). The first visualization did not include the taxonomic level. In the same script, the Labellum filtered table was used again toinclude the taxonomic level 6 (genus) ANCOM analysis. All the taxonomic analysis included an l6 to differentiate from the non-taxonomic analysis. The script used was:
+
+#!/bin/sh
+#SBATCH --job-name=ancom_labell
+#SBATCH --partition=smem
+#SBATCH --nodes=1
+#SBATCH --ntasks=10
+#SBATCH --time=35:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=samontoy@colostate.edu
+
+
+# Activate qiime
+source activate qiime2-2020.8
+
+# ANCOM command for filtered table (Labellum)
+qiime feature-table filter-samples \
+  --i-table rarefied_table-F.qza \
+  --m-metadata-file fly_metadata.txt \
+  --p-where "[sample_site]='Labellum'" \
+  --o-filtered-table labellum-table.qza
+
+qiime composition add-pseudocount \
+  --i-table labellum-table.qza \
+  --o-composition-table comp-labellum-table.qza
+
+# Visual for the labellum filtered table without the taxonomic analysis
+qiime composition ancom \
+  --i-table comp-labellum-table.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column placement_season \
+  --o-visualization ancom-site-Labellum.qzv
+
+# TAXONOMIC ANALYSIS - using the Labellum filtered table above
+
+# Table including the genus level for analysis
+qiime taxa collapse \
+  --i-table labellum-table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-level 6 \
+  --o-collapsed-table labellum-table-l6.qza
+
+qiime composition add-pseudocount \
+  --i-table labellum-table-l6.qza \
+  --o-composition-table comp-labellum-table-l6.qza
+
+# Visual for the labellum filtered table for ANCOM taxonomic analysis
+qiime composition ancom \
+  --i-table comp-labellum-table-l6.qza \
+  --m-metadata-file fly_metadata.txt \
+  --m-metadata-column placement_season \
+  --o-visualization l6-ancom-labellum.qzv
+
+This was as far as the analysis has been completed as the last team meeting had the analysis focus on ANCOM Differential Abundance. The R script houses the more complete visualizations that were updated from QIIME2 View graphics. Dr. Alex Emmons was a huge mentor and aid in the analysis for any questions or advising that was required. This ReadMe file was created to help explain the project and analysis that was completed by Ms. Sophia Montoya. 
